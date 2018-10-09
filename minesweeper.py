@@ -21,6 +21,8 @@ class MinesweeperBoard(object):
         lines = [line.split() for line in board.split("\n")]
         l = len(lines[0])
         assert all(len(line) == l for line in lines), "Board should be rectangular"
+        self.x = len(lines)
+        self.y = l
 
         self.squares = []
         for line in lines:
@@ -33,15 +35,8 @@ class MinesweeperBoard(object):
 
     def reveal_square(self, x, y):
         self.squares[x][y].hidden = False
-        return (self.squares[x][y].mine, self.num_adjacent(x, y))
 
-    def num_adjacent(self, x, y):
-        # this count will include itself, which doesn't matter, because if you're
-        # checking a mined square, you lose
-        if self.squares[x][y].adjacent != -1:
-            # I don't really know how much time we save by being lazy here.
-            return self.squares[x][y].adjacent
-
+        # Load adjacent. I don't know if there's any reason to do this lazily.
         total = 0
         for dx, dy in list(itertools.product([1, -1, 0], repeat=2)):
             try:
@@ -52,7 +47,11 @@ class MinesweeperBoard(object):
                 pass
 
         self.squares[x][y].adjacent = total
-        return total
+
+    def get_square(self, x, y):
+        if self.squares[x][y].hidden:
+            return None
+        return self.squares[x][y]
 
     def pretty_string(self, color=False):
         if color:
@@ -82,7 +81,55 @@ class MinesweeperBoard(object):
     def __str__(self):
         return self.pretty_string()
 
-    
+
+class Solver(object):
+    def __init__(self, board):
+        self.board = board
+        self.mines = set([]) # set of tuple coords
+
+    def get_hidden_coords(self):
+        # Really we should keep track of these when we reveal squares, instead of
+        # recreating the set every time we need it. That might be a non-negligible
+        # performance improvement.
+        hidden_coords = set([])
+        for x, y in itertools.product(range(self.board.x), range(self.board.y)):
+            if self.board.get_square(x, y) is None:
+                hidden_coords.add((x, y))
+        return hidden_coords
+
+    def solve(self):
+        # TODO: keep track of the solution so we can display it and prove we really
+        # did solve the puzzle.
+
+        # Exit when a mine is revealed or only mines remain to be revealed
+        # TODO: add things to self.mines
+        while self.mines < self.get_hidden_coords():
+            # TODO: need some better exit conditions
+            self.deduce()
+            self.guess()
+            print self.board.pretty_string(color=True)
+            print "=" * self.board.y
+
+    def deduce(self):
+        # TODO: deductive solving
+        # Reveal as much of the board based on deductive rules as we can.
+        return
+
+    def guess(self):
+        # TODO: improve guessing logic.
+        # Select a square on the board to reveal when uncertain. The square is not
+        # guaranteed to be free of mines, but should be selected to maximize this
+        # probability. For now, I'll pick one at random, but the idea is to
+        # consider mine probability in the future, as well as some other hueristics
+        # (whether it is close or far from revealed squares, if it is near an edge)
+        
+        guessed = random.choice(tuple(self.get_hidden_coords()))
+        self.board.reveal_square(*guessed)
+        if self.board.get_square(*guessed).mine:
+            self.mines.add(guessed)
+        return guessed
+
+
 def create_puzzle(x, y, num_mines):
     if (x * y) < num_mines:
         raise ValueError("num_mines is greater than number of available squares")
@@ -105,10 +152,8 @@ def create_puzzle(x, y, num_mines):
 def main():
     puzzle = create_puzzle(DEFAULT_X, DEFAULT_Y, DEFAULT_NUM_MINES)
     board = MinesweeperBoard(puzzle)
-    for x in range(DEFAULT_X):
-        for y in range(DEFAULT_Y):
-            board.reveal_square(x, y)
-    print board.pretty_string(color=True)
+    solver = Solver(board)
+    solver.solve()
 
 if __name__ == "__main__":
     main()
