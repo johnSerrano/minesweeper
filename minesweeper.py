@@ -279,9 +279,6 @@ class Solver(object):
         # consider mine probability in the future, as well as some other hueristics
         # (whether it is close or far from revealed squares, if it is near an edge)
         
-        coords = tuple(self.get_hidden_coords())
-        if len(coords) == 0:
-            raise Exception("Yeah it's really zero")
         guessed = random.choice(tuple(self.get_hidden_coords()))
         self.board.reveal_square(*guessed)
 
