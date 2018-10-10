@@ -306,11 +306,7 @@ def main():
     puzzle = create_puzzle(DEFAULT_X, DEFAULT_Y, DEFAULT_NUM_MINES)
     board = MinesweeperBoard(puzzle)
     solver = Solver(board)
-    try:
-        solver.solve()
-    except HitMineException:
-        print board.pretty_string()
-        print "Hit a mine!"
+    solver.solve()
 
 if __name__ == "__main__":
     main()
