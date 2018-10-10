@@ -173,7 +173,73 @@ class Solver(object):
             else:
                 set_metadata[set_coords] = (mines_left, mines_left)
 
-        # TODO: generate sets by intersection and difference of those
+        frontier = set([])
+        previous = set_metadata.keys()
+        while len(previous) != 0:
+            for known_set in previous:
+                known_min, known_max = set_metadata[known_set]
+                known_max_safe = len(known_set) - known_min
+
+                intersecting_sets = set([])
+                for sq in known_set:
+                    intersecting_sets.update(set(square_to_sets[sq]))
+                intersecting_sets -= known_set
+
+                for intersector in intersecting_sets:
+                    # From each pair of overlapping sets, we can create three new
+                    # sets with known minimum and maximum mine populations: the
+                    # intersection and both differences. By discovering these sets,
+                    # the algorithm is able to utilize the subtle restrictions
+                    # neighboring sets impose on each other.
+
+                    intersector_min, intersector_max = set_metadata[intersector]
+                    intersector_max_safe = len(intersector) - intersector_min
+                    min_max_safe = min(known_max_safe, intersector_max_safe)
+
+                    # intersection:
+                    intersection = intersector & known_set
+                    intersection_min = min(0, len(intersection) - min_max_safe)
+                    intersection_max = min(
+                        len(intersection), intersector_max, known_max
+                    )
+                    if intersection in set_metadata:
+                        old_min, old_max = set_metadata[intersection]
+                        intersection_min = max(old_min, intersection_min)
+                        intersection_max = min(old_max, intersection_max)
+                    else:
+                        frontier.add(intersection)
+
+                    set_metadata[intersection] = (intersection_min, intersection_max)
+
+                    for square in intersection:
+                        square_to_sets[square].append(intersection)
+
+
+                    # difference:
+                    # we only need to take the difference in one direction, because
+                    # we're iterating over every set. We'll get the other difference
+                    # when intersector and known_set are reversed.
+
+                    difference = known_set - intersection
+                    difference_min = max(0, known_min - intersection_max)
+                    difference_max = min(len(difference),
+                                         known_max - intersection_min)
+
+                    if difference in set_metadata:
+                        old_min, old_max = set_metadata[difference]
+                        difference_min = max(old_min, difference_min)
+                        difference_max = min(old_max, difference_max)
+                    else:
+                        frontier.add(difference)
+
+                    set_metadata[difference] = (difference_min, difference_max)
+
+                    for square in difference:
+                        square_to_sets[square].append(difference)
+
+
+            previous = frontier.copy()
+            frontier = set([])
 
         return set_metadata
 
